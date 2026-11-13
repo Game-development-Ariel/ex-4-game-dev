@@ -353,7 +353,14 @@ public static class GameFeelSetup
         AddZone<MemoryZone>(zones.transform, "Memory: Wall", new Vector2(-4f, 3.5f), new Vector2(2f, 1f), "memory",
             "Lines scratched into the wall. Someone counted days here before me.\nI'll count too. And I'll go home.", 10);
         AddZone<HintZone>(zones.transform, "Hint: Door", new Vector2(-2f, 1f), new Vector2(1f, 4f), "hint",
-            "The door isn't locked all the way. I lean on it, and it gives.\nThe corridor is dark. I follow the faint light.", 0);
+            "The door isn't locked all the way. I lean on it, and it gives.\nSteps outside. A guard. I wait until he walks away.", 0);
+        AddZone<HintZone>(zones.transform, "Hint: Guard", new Vector2(1f, 0.5f), new Vector2(1f, 3f), "hint",
+            "His flashlight shows where he looks. I stay behind him,\nor wait in a dark corner of the wall until he passes.", 0);
+        AddZone<HintZone>(zones.transform, "Hint: Room Camera", new Vector2(21f, -2.5f), new Vector2(2f, 1f), "hint",
+            "Another eye, in the ceiling of the storage room.\nI wait here until it looks away. Then straight to the water.", 0);
+        AddZone<MemoryZone>(zones.transform, "Memory: Cup", new Vector2(23.5f, 1.7f), new Vector2(1.6f, 1f), "memory",
+            "A tin cup on the table.\nAt home the kettle is always on, and someone is waiting to pour.", 15);
+        AddQuietPlace(zones.transform, new Vector2(2.5f, -1.5f));
         AddZone<HintZone>(zones.transform, "Hint: Camera", new Vector2(10.5f, -3.5f), new Vector2(3f, 1f), "hint",
             "A camera. Its pale light is its eye.\nIf the light touches me, they'll know.", 0);
         AddZone<HintZone>(zones.transform, "Hint: Wait", new Vector2(18.5f, -6.5f), new Vector2(1f, 3f), "hint",
@@ -385,8 +392,30 @@ public static class GameFeelSetup
         SetupTools.SetArray(end, "hideWhenLevelEnds", new Object[]
         {
             player.gameObject, GameObject.Find("Sound"), GameObject.Find("StatusHud"),
-            GameObject.Find("Tutorial UI"), GameObject.Find("SecurityCamera"),
+            GameObject.Find("Tutorial UI"), GameObject.Find("Watchers"),
         });
+    }
+
+    /// <summary>
+    /// The dark corner in the corridor wall is also a quiet place: standing still in it gives hope.
+    /// A faint warm light marks it, so the player is drawn to step in.
+    /// </summary>
+    private static void AddQuietPlace(Transform parent, Vector2 position)
+    {
+        var place = new GameObject("Quiet Place");
+        place.transform.SetParent(parent, false);
+        place.transform.position = position;
+        BoxCollider box = place.AddComponent<BoxCollider>();
+        box.isTrigger = true;
+        box.size = new Vector3(0.9f, 0.9f, 1f);
+
+        QuietPlace quiet = place.AddComponent<QuietPlace>();
+        SetupTools.SetField(quiet, "memoryFound", TunnelAssets.MemoryFound);
+        SerializedObject fields = new SerializedObject(quiet);
+        fields.FindProperty("verse").stringValue = "\"Hope in the Lord; be strong, and let your heart take courage.\"\nI say it without a sound. Something in me stands up again.";
+        fields.ApplyModifiedPropertiesWithoutUndo();
+
+        AddBulb(place.transform, "Glow", position, 1.4f, 0.45f, new Color(1f, 0.85f, 0.6f));
     }
 
     private static void AddZone<T>(Transform parent, string name, Vector2 position, Vector2 size, string textField, string text, int hope) where T : Component

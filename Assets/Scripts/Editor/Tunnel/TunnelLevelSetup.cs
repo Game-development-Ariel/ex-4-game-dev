@@ -87,6 +87,16 @@ public static class TunnelLevelSetup
 
         SetupTools.GetOrAdd<PlayerPush>(player);
 
+        // Hope changes the body: speed, sight (the soft light on the Body child) and hearing.
+        HopeSenses senses = SetupTools.GetOrAdd<HopeSenses>(player);
+        SetupTools.SetField(senses, "effects", TunnelAssets.HopeEffects);
+        SetupTools.SetField(senses, "eyes", player.transform.Find("Body").GetComponent<UnityEngine.Rendering.Universal.Light2D>());
+        SetupTools.SetField(senses, "hintRequested", TunnelAssets.HintRequested);
+        foreach (HeardSteps steps in Object.FindObjectsByType<HeardSteps>(FindObjectsSortMode.None))
+        {
+            SetupTools.SetField(steps, "listener", senses);
+        }
+
         Hope hope = SetupTools.GetOrAdd<Hope>(player);
         SetupTools.SetField(hope, "settings", TunnelAssets.LevelSettings);
 

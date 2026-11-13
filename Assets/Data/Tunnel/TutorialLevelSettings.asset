@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: TutorialLevelSettings
   m_EditorClassIdentifier: Assembly-CSharp::TunnelLevelSettings
   maxHope: 100
-  startHope: 60
-  hopeLostWhenCaught: 25
+  startHope: 40
+  hopeLostWhenCaught: 20

@@ -15,7 +15,8 @@ public static class TutorialMapBuilder
     // Every character is one tile. Row 0 is the top (north) of the map.
     //  #  wall                     .  floor
     //  m  wall with tally marks    p  wall with a pipe     (only on a wall that has floor below it)
-    //  c  wall with the security camera. It looks at the floor next to it
+    //  c  wall with a security camera. It looks at the floor next to it
+    //  v  wall with the storage room's camera: shorter sight and a smaller sweep
     //  S  mattress, left half      s  mattress, right half
     //  N  journal (note)           @  player start
     //  K  sharp concrete (rubble)  k  small rubble
@@ -26,12 +27,12 @@ public static class TutorialMapBuilder
     private static readonly string[] LAYOUT =
     {
         "######mm#################################",
-        "#.........###############################",
+        "#.........####################v##########",
         "#.Ss......###ppp############CC....T..####",
-        "#.N@......#.....CC.....#####C......W.####",
+        "#.N@......#............#####C......W.####",
         "#.........H............#####.........####",
         "#.........#.k......B...#####.........####",
-        "#....X.P..##########...#####.k.......####",
+        "#....X.P..###.###.##...#####.k.......####",
         "#K........##########..B#####........B####",
         "####################.P.########GG########",
         "####################...###pp###..########",
@@ -52,6 +53,19 @@ public static class TutorialMapBuilder
     private const int SEED = 7;
 
     private const string TILES_FOLDER = "Assets/Tiles/Tunnel/";
+
+    // The guard walks along this row of the first corridor, between these two columns.
+    private const int GUARD_ROW = 3;
+    private const int GUARD_FIRST_COLUMN = 13;
+    private const int GUARD_LAST_COLUMN = 18;
+    private const string GUARD_SPRITE_PATH = "Assets/Sprites/Player/Player.png";
+
+    // A flashlight: warmer and stronger than the camera's pale light.
+    private static readonly Color GuardLightColor = new Color(1f, 0.82f, 0.5f, 0.2f);
+    private static readonly Color GuardTint = new Color(0.5f, 0.46f, 0.42f);
+
+    // The storage room's camera turns less to each side than the corridor's camera.
+    private const float ROOM_CAMERA_SWEEP = 35f;
 
     // The camera's picture. Drawn with the lens pointing up, because "up" is where the camera looks.
     private const string CAMERA_SPRITE_PATH = "Assets/Sprites/Items/SecurityCamera.png";
@@ -129,7 +143,6 @@ public static class TutorialMapBuilder
         int height = LAYOUT.Length;
         Vector3Int playerCell = Vector3Int.zero;
         Vector3Int bottleCell = Vector3Int.zero;
-        Vector3Int cameraCell = Vector3Int.zero;
 
         for (int row = -MARGIN; row < height + MARGIN; row++)
         {
@@ -154,11 +167,6 @@ public static class TutorialMapBuilder
                     continue;
                 }
 
-                if (symbol == 'c')
-                {
-                    cameraCell = cell;
-                }
-
                 // A wall. If there is floor right below it, the player sees its front face.
                 bool floorBelow = IsFloor(SymbolAt(column, row + 1));
                 if (floorBelow)
@@ -181,7 +189,7 @@ public static class TutorialMapBuilder
         PlaceMarker("PlayerStart", floor.GetCellCenterWorld(playerCell));
         GameObject player = MovePlayer(floor, playerCell);
         PlaceMarker("BottleSpawn", floor.GetCellCenterWorld(bottleCell));
-        PlaceSecurityCamera(floor, cameraCell, CameraFacing(CameraColumn(), CameraRow()), player);
+        PlaceWatchers(floor, player);
         // Saves right away, so the result is never lost by forgetting Cmd+S.
         EditorSceneManager.MarkSceneDirty(grid.scene);
         EditorSceneManager.SaveScene(grid.scene);
@@ -372,7 +380,7 @@ public static class TutorialMapBuilder
 
     private static bool IsFloor(char symbol)
     {
-        return symbol != '#' && symbol != 'm' && symbol != 'p' && symbol != 'c';
+        return symbol != '#' && symbol != 'm' && symbol != 'p' && symbol != 'c' && symbol != 'v';
     }
 
     // Rows go down in the layout but up in the world, so the row is flipped.
@@ -463,24 +471,6 @@ public static class TutorialMapBuilder
         return marker.transform;
     }
 
-    private static int CameraRow()
-    {
-        for (int row = 0; row < LAYOUT.Length; row++)
-        {
-            if (LAYOUT[row].IndexOf('c') >= 0)
-            {
-                return row;
-            }
-        }
-        return -1;
-    }
-
-    private static int CameraColumn()
-    {
-        int row = CameraRow();
-        return row >= 0 ? LAYOUT[row].IndexOf('c') : -1;
-    }
-
     // The direction from the camera's wall to the floor next to it.
     private static Vector2Int CameraFacing(int column, int row)
     {
@@ -499,44 +489,54 @@ public static class TutorialMapBuilder
         return Vector2Int.up;
     }
 
+    /// <summary>
+    /// Everything that can see the player: the cameras from the layout, and the guard.
+    /// They all sit under one "Watchers" object, and they all raise the same PlayerCaught event.
+    /// </summary>
+    private static void PlaceWatchers(Tilemap floor, GameObject player)
+    {
+        Object.DestroyImmediate(GameObject.Find("SecurityCamera")); // Left from the older, single-camera scene.
+        Transform parent = SetupTools.Recreate("Watchers").transform;
+
+        for (int row = 0; row < LAYOUT.Length; row++)
+        {
+            for (int column = 0; column < LAYOUT[row].Length; column++)
+            {
+                char symbol = LAYOUT[row][column];
+                if (symbol == 'c')
+                {
+                    PlaceSecurityCamera(parent, floor, column, row, null, TunnelAssets.CameraVision, player);
+                }
+                else if (symbol == 'v')
+                {
+                    PlaceSecurityCamera(parent, floor, column, row, ROOM_CAMERA_SWEEP, TunnelAssets.RoomCameraVision, player);
+                }
+            }
+        }
+        PlaceGuard(parent, floor, player);
+    }
+
     // The camera hangs on the edge of its wall tile, so its view starts at the floor and not inside the wall.
     // It is built from small parts: the sweep turns it, the sensor looks, the cone mesh draws what the sensor sees.
-    private static void PlaceSecurityCamera(Tilemap floor, Vector3Int cell, Vector2Int facing, GameObject player)
+    // A null sweepAngle keeps the default from CameraSweep.cs.
+    private static void PlaceSecurityCamera(Transform parent, Tilemap floor, int column, int row, float? sweepAngle, VisionStats stats, GameObject player)
     {
-        GameObject old = GameObject.Find("SecurityCamera");
-        if (old != null)
-        {
-            Undo.DestroyObjectImmediate(old);
-        }
-        if (CameraRow() < 0)
-        {
-            return;
-        }
-
+        Vector2Int facing = CameraFacing(column, row);
         GameObject cameraObject = new GameObject("SecurityCamera");
-        Undo.RegisterCreatedObjectUndo(cameraObject, "Build Tutorial Map");
+        cameraObject.transform.SetParent(parent, false);
         CameraSweep sweep = cameraObject.AddComponent<CameraSweep>();
-        VisionSensor sensor = cameraObject.AddComponent<VisionSensor>();
+        VisionSensor sensor = AddSensor(cameraObject, stats, player);
         cameraObject.AddComponent<CameraIndicators>();
+        AddCone(cameraObject.transform, sensor);
 
-        // The cone is a child, so it turns with the camera. VisionConeMesh rebuilds its mesh every frame.
-        var cone = new GameObject("VisionCone");
-        cone.transform.SetParent(cameraObject.transform, false);
-        cone.transform.localPosition = new Vector3(0f, 0f, CONE_Z);
-        cone.AddComponent<MeshFilter>();
-        SetupTools.SetField(cone.AddComponent<VisionConeMesh>(), "sensor", sensor);
-        MeshRenderer coneRenderer = cone.AddComponent<MeshRenderer>();
-        coneRenderer.sharedMaterial = ConeMaterial();
-        coneRenderer.sortingOrder = CONE_SORTING_ORDER;
-
-        // The picture is a child too, so it turns together with the camera and its cone.
+        // The picture is a child, so it turns together with the camera and its cone.
         var body = new GameObject("Body");
         body.transform.SetParent(cameraObject.transform, false);
         SpriteRenderer bodyRenderer = body.AddComponent<SpriteRenderer>();
         bodyRenderer.sprite = CameraSprite();
         bodyRenderer.sortingOrder = CAMERA_SORTING_ORDER;
 
-        Vector3 center = floor.GetCellCenterWorld(cell);
+        Vector3 center = floor.GetCellCenterWorld(ToCell(column, row));
         cameraObject.transform.position = center + new Vector3(facing.x, facing.y, 0f) * 0.6f;
 
         // Unity angles: 0 looks up, 90 left, 180 down, 270 right.
@@ -547,13 +547,87 @@ public static class TutorialMapBuilder
         }
         cameraObject.transform.rotation = Quaternion.Euler(0f, 0f, angle);
 
-        // Fills the fields, like dragging them in the Inspector.
+        // Fills the fields, like typing them in the Inspector.
         SerializedObject fields = new SerializedObject(sweep);
         fields.FindProperty("centerAngle").floatValue = angle;
+        if (sweepAngle.HasValue)
+        {
+            fields.FindProperty("sweepAngle").floatValue = sweepAngle.Value;
+        }
         fields.ApplyModifiedProperties();
-        SetupTools.SetField(sensor, "stats", TunnelAssets.CameraVision);
+    }
+
+    /// <summary>
+    /// The guard is made of the same parts as a camera: a VisionSensor and its cone.
+    /// Only the thing that moves him is new: GuardPatrol instead of CameraSweep.
+    /// </summary>
+    private static void PlaceGuard(Transform parent, Tilemap floor, GameObject player)
+    {
+        Transform route = new GameObject("Guard Route").transform;
+        route.SetParent(parent, false);
+        Transform west = AddRoutePoint(route, floor, GUARD_FIRST_COLUMN);
+        Transform east = AddRoutePoint(route, floor, GUARD_LAST_COLUMN);
+
+        var guard = new GameObject("Guard");
+        guard.transform.SetParent(parent, false);
+        guard.transform.position = west.position;
+        GuardPatrol patrol = guard.AddComponent<GuardPatrol>();
+        SetupTools.SetArray(patrol, "points", new Object[] { east, west });
+
+        VisionSensor sensor = AddSensor(guard, TunnelAssets.GuardVision, player);
+        VisionConeMesh cone = AddCone(guard.transform, sensor);
+        SerializedObject coneFields = new SerializedObject(cone);
+        coneFields.FindProperty("normalColor").colorValue = GuardLightColor;
+        coneFields.ApplyModifiedProperties();
+
+        var body = new GameObject("Body");
+        body.transform.SetParent(guard.transform, false);
+        SpriteRenderer bodyRenderer = body.AddComponent<SpriteRenderer>();
+        bodyRenderer.sprite = AssetDatabase.LoadAssetAtPath<Sprite>(GUARD_SPRITE_PATH);
+        bodyRenderer.color = GuardTint;
+        bodyRenderer.sortingOrder = CAMERA_SORTING_ORDER;
+
+        // The ring of the footsteps is drawn above the walls and without light, so it is "heard" through them.
+        var ring = new GameObject("Steps Ring");
+        ring.transform.SetParent(guard.transform, false);
+        SpriteRenderer ringRenderer = ring.AddComponent<SpriteRenderer>();
+        ringRenderer.sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Resources/UI/JoystickRing.png");
+        ringRenderer.sharedMaterial = ConeMaterial();
+        ringRenderer.color = new Color(1f, 0.9f, 0.75f, 0f);
+        ringRenderer.sortingOrder = 20;
+        SetupTools.SetField(guard.AddComponent<HeardSteps>(), "ring", ringRenderer);
+    }
+
+    private static Transform AddRoutePoint(Transform route, Tilemap floor, int column)
+    {
+        Transform point = new GameObject("Point").transform;
+        point.SetParent(route, false);
+        point.position = floor.GetCellCenterWorld(ToCell(column, GUARD_ROW));
+        return point;
+    }
+
+    private static VisionSensor AddSensor(GameObject watcher, VisionStats stats, GameObject player)
+    {
+        VisionSensor sensor = watcher.AddComponent<VisionSensor>();
+        SetupTools.SetField(sensor, "stats", stats);
         SetupTools.SetField(sensor, "target", player != null ? player.transform : null);
         SetupTools.SetField(sensor, "targetSeen", TunnelAssets.PlayerCaught);
+        return sensor;
+    }
+
+    // The cone is a child, so it turns with its watcher. VisionConeMesh rebuilds its mesh every frame.
+    private static VisionConeMesh AddCone(Transform watcher, VisionSensor sensor)
+    {
+        var cone = new GameObject("VisionCone");
+        cone.transform.SetParent(watcher, false);
+        cone.transform.localPosition = new Vector3(0f, 0f, CONE_Z);
+        cone.AddComponent<MeshFilter>();
+        VisionConeMesh mesh = cone.AddComponent<VisionConeMesh>();
+        SetupTools.SetField(mesh, "sensor", sensor);
+        MeshRenderer coneRenderer = cone.AddComponent<MeshRenderer>();
+        coneRenderer.sharedMaterial = ConeMaterial();
+        coneRenderer.sortingOrder = CONE_SORTING_ORDER;
+        return mesh;
     }
 
     /// <summary>

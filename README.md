@@ -31,7 +31,7 @@
 
 | משחק | פקדים | ניצחון | הפסד |
 |---|---|---|---|
-| אור במנהרה | WASD או חצים, M למפה. הולכים לתוך דלת, ארגז או שק חול כדי לדחוף אותם | מביאים את הבקבוק למזרן | כל היתפסות מורידה 25 תקווה. בלי תקווה היום נגמר |
+| אור במנהרה | WASD או חצים, M למפה. הולכים לתוך דלת, ארגז או שק חול כדי לדחוף אותם. עומדים בלי לזוז בפינה המוארת כדי להתפלל | מביאים את הבקבוק למזרן | כל היתפסות (שומר או מצלמה) מורידה 20 תקווה. בלי תקווה היום נגמר |
 | ביטקוין קבור | עכבר: בוחרים מכונה בחנות ולוחצים על משבצת מעל המסוע. לוחצים על פריט בשולחן ובוחרים Waste, Sell או This is the target | מסמנים את ארגז הכלים האדום כמטרה | הזמן נגמר, או שהמטרה נזרקה לפסולת |
 | בר הבלנדים | עכבר: לחיצה על בקבוק מוזגת 10% לכוס. Taste, Empty glass, Serve | ממוצע של 3 כוכבים לפחות בשלושה לקוחות | ממוצע נמוך מ-3 כוכבים |
 
@@ -88,6 +88,14 @@ Assets/
 ```mermaid
 flowchart LR
     CameraSweep -- turns the object of --> VisionSensor
+    GuardPatrol -- moves the object of --> VisionSensor
+    HeardSteps -- IsWalking --> GuardPatrol
+    HeardSteps -- HearingRange --> HopeSenses
+    Hope -. Changed .-> HopeSenses
+    HopeSenses -- SpeedFactor --> PlayerMovement
+    HopeSenses ==> HintRequested
+    QuietPlace -- Add --> Hope
+    QuietPlace ==> MemoryFound
     VisionConeMesh -- DistanceToWall --> VisionSensor
     CameraIndicators -- IsAlarmed --> VisionSensor
     Tension -- finds all --> VisionSensor
@@ -131,11 +139,13 @@ flowchart LR
 | BottlePicked | BottleCarrier | StatusHud |
 | BottleDelivered | MattressGoal | TunnelRound |
 | LevelWon, LevelLost | TunnelRound | EndScreen |
-| HintRequested | HintZone, ImpactNoise | HintToast |
-| MemoryFound | MemoryZone | MemoryCaption |
-| Hope.Changed | Hope | StatusHud |
+| HintRequested | HintZone, ImpactNoise, HopeSenses | HintToast |
+| MemoryFound | MemoryZone, QuietPlace | MemoryCaption |
+| Hope.Changed | Hope | StatusHud, HopeSenses |
 
-המצלמה בנויה מרכיבים קטנים על אותו אובייקט: CameraSweep מסובב, VisionSensor רואה, VisionConeMesh מצייר את מה שהחיישן רואה, ו-CameraIndicators מוסיף נורה וזמזום.
+המצלמה בנויה מרכיבים קטנים על אותו אובייקט: CameraSweep מסובב, VisionSensor רואה, VisionConeMesh מצייר את מה שהחיישן רואה, ו-CameraIndicators מוסיף נורה וזמזום. השומר בנוי מאותם VisionSensor ו-VisionConeMesh, ורק מה שמזיז אותו שונה: GuardPatrol במקום CameraSweep.
+
+התקווה משנה את הגוף דרך [HopeSenses](Assets/Scripts/Tunnel/Player/HopeSenses.cs): ככל שיש יותר תקווה הגיבור הולך מהר יותר, רואה רחוק יותר בחושך (רדיוס האור סביבו) ושומע את צעדי השומר ממרחק גדול יותר, גם מאחורי קיר. המספרים בנכס [HopeEffects](Assets/Data/Tunnel/HopeEffects.asset).
 
 ### ביטקוין קבור
 
@@ -240,7 +250,7 @@ flowchart LR
 
 ## איך מוסיפים דברים
 
-**אויב חדש במנהרה, למשל שומר שמסתובב.** כותבים סקריפט אחד חדש, `GuardPatrol.cs` בתיקייה `Tunnel/Security`, שמזיז את השומר בין נקודות. על אותו אובייקט שמים את VisionSensor ו-VisionConeMesh הקיימים, עם נכס VisionStats חדש (למשל ראייה קצרה ורחבה יותר), ומוסיפים אותו למפה ב-[TutorialMapBuilder.cs](Assets/Scripts/Editor/Tunnel/TutorialMapBuilder.cs). שום קובץ אחר לא משתנה, כי השומר מרים את אותו `PlayerCaught`, וכל מה שקורה כשנתפסים (תקווה, חזרה לתא, בקבוק, מסך, צליל) כבר מאזין לו. גם Tension, שמגביר את הדופק ליד סכנה, מחפש כל VisionSensor ולא "מצלמה".
+**אויב חדש במנהרה.** כך הוספנו את השומר, אחרי שהמצלמה כבר עבדה: סקריפט אחד חדש, [GuardPatrol.cs](Assets/Scripts/Tunnel/Security/GuardPatrol.cs), שמוליך אותו בין נקודות. על אותו אובייקט שמנו את VisionSensor ו-VisionConeMesh הקיימים, עם נכס VisionStats חדש ([GuardVision](Assets/Data/Tunnel/GuardVision.asset): ראייה רחבה וקצרה יותר), והוספנו אותו למפה ב-[TutorialMapBuilder.cs](Assets/Scripts/Editor/Tunnel/TutorialMapBuilder.cs). שום קובץ אחר לא השתנה, כי השומר מרים את אותו `PlayerCaught`, וכל מה שקורה כשנתפסים (תקווה, חזרה לתא, בקבוק, מסך, צליל) כבר מאזין לו. גם Tension, שמגביר את הדופק ליד סכנה, מחפש כל VisionSensor ולא "מצלמה". באותה דרך המצלמה השנייה במחסן היא רק נכס VisionStats נוסף ותו במפה. אויב מסוג אחר, למשל כלב ששומע, יצטרך סקריפט חיישן משלו שמרים את אותו אירוע.
 
 **פריט חדש במזבלה.** יוצרים נכס TrashItemData חדש (`Create > Landfill > Trash Item`) ומוסיפים אותו למשאית בנכס [Day1Settings](Assets/Data/Landfill/Day1Settings.asset). אין שינוי בקוד: הפריפאב TrashItem לוקח מהנכס צבע, גודל ומשקל, והמכונות בודקות את התכונות שבנכס.
 
@@ -267,7 +277,7 @@ flowchart LR
 
 * **ביטקוין קבור** מוצג מהצד ולא מלמעלה, כדי שכוח הכבידה יעשה חלק מהמיון: פריטים קטנים נופלים דרך הנפה, ופריטים קלים עפים במפוח. יש שלוש משבצות קבועות למכונות במקום רשת חופשית. השלב הוא יום 1 מקוצר, עם מגבלת זמן כדי שיהיה תנאי הפסד.
 * **בר הבלנדים**: במקום כפתורי פלוס ומינוס, לוחצים על הבקבוק והיין נזרק לכוס. אי אפשר להוריד זן אחד, רק לרוקן את הכוס. בשלב יש שלושת הלקוחות הראשונים של יום 1.
-* **אור במנהרה**: בשלב הלימוד אפשר עכשיו להפסיד (התקווה יורדת עד 0), כדי שתנאי ההפסד יעבוד. נוספו דברים שאפשר לדחוף: דלת התא נפתחת על ציר, יש ארגז בתא וארגז במסדרון שאפשר לדחוף לפניך כמחסה מהמצלמה (הקרניים שלה נעצרות בו), ושני שקי חול חוסמים את הכניסה למחסן, כהכנה לחפירה בשקי החול שבמסמך השלבים.
+* **אור במנהרה**: בשלב הלימוד אפשר עכשיו להפסיד (התקווה יורדת עד 0), כדי שתנאי ההפסד יעבוד. נוספו שומר שמסייר במסדרון הראשון (מתחבאים ממנו בגומחות שבקיר), מצלמה שנייה במחסן, מקום שקט שבו עומדים בלי לזוז ואומרים פסוק, וזיכרון שלישי. מתחילים עם 40 תקווה, וכל תקווה שמשיגים מורגשת מיד במהירות, בטווח הראייה ובשמיעה. נוספו גם דברים שאפשר לדחוף: דלת התא נפתחת על ציר, יש ארגז בתא וארגז במסדרון שאפשר לדחוף לפניך כמחסה מהמצלמה (הקרניים שלה נעצרות בו), ושני שקי חול חוסמים את הכניסה למחסן, כהכנה לחפירה בשקי החול שבמסמך השלבים.
 
 ## חברי הצוות
 

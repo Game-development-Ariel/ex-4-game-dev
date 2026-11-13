@@ -16,4 +16,26 @@ public static class TunnelAssets
 
     public static TunnelLevelSettings LevelSettings => SetupTools.Asset<TunnelLevelSettings>(Folder + "TutorialLevelSettings.asset");
     public static VisionStats CameraVision => SetupTools.Asset<VisionStats>(Folder + "SecurityCameraVision.asset");
+    public static HopeEffects HopeEffects => SetupTools.Asset<HopeEffects>(Folder + "HopeEffects.asset");
+
+    /// <summary>The camera in the storage room sees a shorter distance, so the room's entrance is safe.</summary>
+    public static VisionStats RoomCameraVision => Vision("RoomCameraVision", 40f, 5f);
+
+    /// <summary>A guard sees wider than a camera, but only as far as his flashlight.</summary>
+    public static VisionStats GuardVision => Vision("GuardVision", 60f, 4.5f);
+
+    // The values are written only when the asset is new, so tuning it in the Inspector is kept.
+    private static VisionStats Vision(string name, float viewAngle, float viewDistance)
+    {
+        string path = Folder + name + ".asset";
+        bool isNew = !System.IO.File.Exists(path);
+        VisionStats stats = SetupTools.Asset<VisionStats>(path);
+        if (isNew)
+        {
+            stats.viewAngle = viewAngle;
+            stats.viewDistance = viewDistance;
+            UnityEditor.EditorUtility.SetDirty(stats);
+        }
+        return stats;
+    }
 }

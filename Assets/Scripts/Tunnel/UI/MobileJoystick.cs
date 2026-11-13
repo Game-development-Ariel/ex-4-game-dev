@@ -4,7 +4,8 @@ using UnityEngine.InputSystem.OnScreen;
 using UnityEngine.UI;
 
 /// <summary>
-/// An on-screen joystick for phones, in the bottom-left corner. It is created only on touch screens.
+/// An on-screen joystick for phones, in the bottom-left corner. It stays hidden until the screen is really touched,
+/// so a computer never shows it, even a laptop that happens to have a touch screen.
 /// OnScreenStick moves the knob with the finger and reports it as the left stick of a virtual gamepad,
 /// which PlayerMovement already reads, so the player code doesn't change at all.
 /// </summary>
@@ -18,19 +19,18 @@ public class MobileJoystick : MonoBehaviour
     // How far the knob can move from the center, in UI pixels.
     private const float KnobRange = 100f;
 
-    /// <summary>True when the game runs on a phone or a touch screen.</summary>
-    public static bool UsesTouch => Application.isMobilePlatform || Touchscreen.current != null;
+    /// <summary>True when the game runs on a phone or a tablet.</summary>
+    public static bool UsesTouch => Application.isMobilePlatform;
+
+    private GameObject joystick;
 
     private void Start()
     {
-        if (!UsesTouch)
-        {
-            return;
-        }
-
         UiFactory.EnsureEventSystem();
         Canvas canvas = UiFactory.CreateCanvas("Joystick Canvas", CanvasSortingOrder);
         canvas.transform.SetParent(transform, false);
+        joystick = canvas.gameObject;
+        joystick.SetActive(UsesTouch);
 
         Image ring = UiFactory.CreateImage(canvas.transform, "Joystick", UiTheme.Sprite("JoystickRing"), Color.white);
         UiFactory.Place(ring.rectTransform, Vector2.zero, new Vector2(Margin, Margin), Vector2.one * RingSize);
@@ -45,5 +45,15 @@ public class MobileJoystick : MonoBehaviour
         stick.controlPath = "<Gamepad>/leftStick";
         stick.movementRange = KnobRange;
         knob.gameObject.SetActive(true);
+    }
+
+    private void Update()
+    {
+        // A mouse click is not a touch, so on a computer this never happens.
+        Touchscreen screen = Touchscreen.current;
+        if (!joystick.activeSelf && screen != null && screen.primaryTouch.press.wasPressedThisFrame)
+        {
+            joystick.SetActive(true);
+        }
     }
 }

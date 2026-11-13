@@ -32,6 +32,12 @@ public class PlayerMovement : MonoBehaviour
     private InputAction moveAction = new InputAction(type: InputActionType.Value, expectedControlType: nameof(Vector2));
 
     private CharacterController controller;
+
+    /// <summary>Multiplies the walking speed. HopeSenses sets it: more hope, faster steps.</summary>
+    public float SpeedFactor { get; set; } = 1f;
+
+    public float CurrentSpeed => moveSpeed * SpeedFactor;
+
     private Vector2 moveInput;
 
     /// <summary>
@@ -78,7 +84,7 @@ public class PlayerMovement : MonoBehaviour
         moveInput = moveAction.ReadValue<Vector2>();
 
         // Move wants the distance for this frame. It stops at walls by itself.
-        controller.Move(moveInput * moveSpeed * Time.deltaTime);
+        controller.Move(moveInput * CurrentSpeed * Time.deltaTime);
         TurnBodyTowardMovement();
     }
 
