@@ -12,8 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d20a2304c3db93846b48453be4e77528, type: 3}
   m_Name: HopeEffects
   m_EditorClassIdentifier: Assembly-CSharp::HopeEffects
-  speedFactor: {x: 0.7, y: 1.5}
-  sightRadius: {x: 2.2, y: 5.2}
-  hearingRange: {x: 2, y: 12}
+  speedFactor: {x: 0.6, y: 1.6}
+  sightRadius: {x: 1.6, y: 7.5}
+  sightBrightness: {x: 0.45, y: 1.1}
+  tunnelBrightness: {x: 0.1, y: 0.42}
+  surgeRadius: 2.5
+  surgeSeconds: 2
+  hearingRange: {x: 1.5, y: 14}
   steadyHope: 50
   faithHope: 75

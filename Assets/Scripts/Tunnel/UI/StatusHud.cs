@@ -43,6 +43,7 @@ public class StatusHud : MonoBehaviour
     private Image hopeFill;
     private Image waterIcon;
     private Text thought;
+    private Text gainText;
     private CanvasGroup blackout;
     private Text blackoutText;
     private Coroutine thinking;
@@ -106,8 +107,18 @@ public class StatusHud : MonoBehaviour
         if (newHope > shownHope)
         {
             StartCoroutine(UiAnim.Punch(flame, 0.35f, 0.6f)); // Hope grew: the flame flares up.
+            StartCoroutine(ShowGain(newHope - shownHope));
         }
         shownHope = newHope;
+    }
+
+    /// <summary>Writes how much hope was gained next to the bar, and lets it fade.</summary>
+    private IEnumerator ShowGain(int amount)
+    {
+        gainText.text = "+" + amount + " hope";
+        gainText.color = UiTheme.Hope;
+        yield return new WaitForSeconds(1.5f);
+        yield return UiAnim.FadeGraphic(gainText, 0f, 1.5f);
     }
 
     private void OnBottlePicked()
@@ -210,6 +221,11 @@ public class StatusHud : MonoBehaviour
         UiFactory.Stretch(hopeFill.rectTransform);
         hopeFill.type = Image.Type.Filled; // fillAmount from 0 to 1 cuts the picture from the right.
         hopeFill.fillMethod = Image.FillMethod.Horizontal;
+
+        gainText = UiFactory.CreateTitle(canvas, "Gain", TopLeft, new Vector2(260f, 44f), 34, UiTheme.Hope);
+        gainText.rectTransform.anchoredPosition = new Vector2(480f, -50f);
+        gainText.alignment = TextAnchor.MiddleLeft;
+        gainText.text = "";
 
         waterIcon = UiFactory.CreateIcon(canvas, "Drop", new Vector2(40f, 40f));
         UiFactory.Place(waterIcon.rectTransform, TopLeft, new Vector2(428f, -60f), new Vector2(40f, 40f));

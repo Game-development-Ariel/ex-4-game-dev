@@ -13,6 +13,9 @@ public class HopeSenses : MonoBehaviour
     [Tooltip("The soft light around the hero. Its radius is how far the eyes see")]
     [SerializeField] private Light2D eyes;
 
+    [Tooltip("The dim light of the whole tunnel")]
+    [SerializeField] private Light2D tunnelLight;
+
     [Tooltip("How fast the body follows a change of hope, in fractions per second")]
     [SerializeField] private float changeSpeed = 0.4f;
 
@@ -34,6 +37,9 @@ public class HopeSenses : MonoBehaviour
     // From 0 (no hope) to 1 (full hope). It follows the real hope slowly, so the change is felt and not sudden.
     private float strength;
     private int lastHope;
+
+    // 1 right after hope is gained, then fades to 0. It makes the light flare, so the moment is felt.
+    private float surge;
 
     /// <summary>From how far the hero hears steps now, in tiles.</summary>
     public float HearingRange => Mathf.Lerp(effects.hearingRange.x, effects.hearingRange.y, strength);
@@ -64,21 +70,26 @@ public class HopeSenses : MonoBehaviour
     private void Update()
     {
         float goal = (float)hope.Current / hope.Max;
-        if (!Mathf.Approximately(strength, goal))
-        {
-            strength = Mathf.MoveTowards(strength, goal, changeSpeed * Time.deltaTime);
-            Apply();
-        }
+        strength = Mathf.MoveTowards(strength, goal, changeSpeed * Time.deltaTime);
+        surge = Mathf.MoveTowards(surge, 0f, Time.deltaTime / effects.surgeSeconds);
+        Apply();
     }
 
     private void Apply()
     {
         movement.SpeedFactor = Mathf.Lerp(effects.speedFactor.x, effects.speedFactor.y, strength);
-        eyes.pointLightOuterRadius = Mathf.Lerp(effects.sightRadius.x, effects.sightRadius.y, strength);
+        eyes.pointLightOuterRadius = Mathf.Lerp(effects.sightRadius.x, effects.sightRadius.y, strength) + surge * effects.surgeRadius;
+        eyes.intensity = Mathf.Lerp(effects.sightBrightness.x, effects.sightBrightness.y, strength) + surge * 0.5f;
+        tunnelLight.intensity = Mathf.Lerp(effects.tunnelBrightness.x, effects.tunnelBrightness.y, strength);
     }
 
     private void OnHopeChanged(int newHope)
     {
+        if (newHope > lastHope)
+        {
+            surge = 1f;
+        }
+
         if (Crossed(effects.faithHope, lastHope, newHope))
         {
             hintRequested.Raise(faithThought);

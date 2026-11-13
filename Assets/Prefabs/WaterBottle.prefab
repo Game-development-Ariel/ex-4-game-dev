@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 6398981672134243967}
   - component: {fileID: 4315267676218230811}
   - component: {fileID: 5542785259397690680}
-  - component: {fileID: 4494002768999506170}
+  - component: {fileID: 3294335682838390349}
   m_Layer: 0
   m_Name: WaterBottle
   m_TagString: Untagged
@@ -129,7 +129,7 @@ SphereCollider:
   serializedVersion: 3
   m_Radius: 0.35
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &4494002768999506170
+--- !u!114 &3294335682838390349
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
