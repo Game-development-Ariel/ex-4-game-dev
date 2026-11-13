@@ -352,8 +352,8 @@ public static class GameFeelSetup
             "A scrap of paper under the mattress.\nI wrote my family's names on it, so I won't forget their voices.", 15);
         AddZone<MemoryZone>(zones.transform, "Memory: Wall", new Vector2(-4f, 3.5f), new Vector2(2f, 1f), "memory",
             "Lines scratched into the wall. Someone counted days here before me.\nI'll count too. And I'll go home.", 10);
-        AddZone<HintZone>(zones.transform, "Hint: Door", new Vector2(0.5f, 1f), new Vector2(1f, 4f), "hint",
-            "The door isn't locked all the way.\nThe corridor is dark. I follow the faint light.", 0);
+        AddZone<HintZone>(zones.transform, "Hint: Door", new Vector2(-2f, 1f), new Vector2(1f, 4f), "hint",
+            "The door isn't locked all the way. I lean on it, and it gives.\nThe corridor is dark. I follow the faint light.", 0);
         AddZone<HintZone>(zones.transform, "Hint: Camera", new Vector2(10.5f, -3.5f), new Vector2(3f, 1f), "hint",
             "A camera. Its pale light is its eye.\nIf the light touches me, they'll know.", 0);
         AddZone<HintZone>(zones.transform, "Hint: Wait", new Vector2(18.5f, -6.5f), new Vector2(1f, 3f), "hint",

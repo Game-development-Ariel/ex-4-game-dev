@@ -31,7 +31,7 @@
 
 | משחק | פקדים | ניצחון | הפסד |
 |---|---|---|---|
-| אור במנהרה | WASD או חצים, M למפה | מביאים את הבקבוק למזרן | כל היתפסות מורידה 25 תקווה. בלי תקווה היום נגמר |
+| אור במנהרה | WASD או חצים, M למפה. הולכים לתוך דלת, ארגז או שק חול כדי לדחוף אותם | מביאים את הבקבוק למזרן | כל היתפסות מורידה 25 תקווה. בלי תקווה היום נגמר |
 | ביטקוין קבור | עכבר: בוחרים מכונה בחנות ולוחצים על משבצת מעל המסוע. לוחצים על פריט בשולחן ובוחרים Waste, Sell או This is the target | מסמנים את ארגז הכלים האדום כמטרה | הזמן נגמר, או שהמטרה נזרקה לפסולת |
 | בר הבלנדים | עכבר: לחיצה על בקבוק מוזגת 10% לכוס. Taste, Empty glass, Serve | ממוצע של 3 כוכבים לפחות בשלושה לקוחות | ממוצע נמוך מ-3 כוכבים |
 
@@ -40,11 +40,11 @@
 | תכונה | איפה | קובץ |
 |---|---|---|
 | CharacterController | השחקן במנהרה | [PlayerMovement.cs](Assets/Scripts/Tunnel/Player/PlayerMovement.cs) |
-| Rigidbody2D | הפריטים על המסוע, טיפות היין | [TrashItem.cs](Assets/Scripts/Landfill/Items/TrashItem.cs), [WineDrop.cs](Assets/Scripts/WineBar/Pouring/WineDrop.cs) |
-| AddForce ו-AddTorque | המשאית זורקת פריט עם דחיפה וסיבוב. הברמן זורק טיפה בקשת שמחושבת כך שתנחת בכוס | [TruckDumper.cs](Assets/Scripts/Landfill/Trucks/TruckDumper.cs), [Bartender.cs](Assets/Scripts/WineBar/Pouring/Bartender.cs) |
+| Rigidbody ו-Rigidbody2D | במנהרה: ארגזים ושקי חול שאפשר לדחוף, ודלת התא. במזבלה: הפריטים על המסוע. בבר: טיפות היין | [TutorialMapBuilder.cs](Assets/Scripts/Editor/Tunnel/TutorialMapBuilder.cs), [TrashItem.cs](Assets/Scripts/Landfill/Items/TrashItem.cs), [WineDrop.cs](Assets/Scripts/WineBar/Pouring/WineDrop.cs) |
+| AddForce ו-AddTorque | השחקן במנהרה דוחף ארגזים, שקי חול ואת הדלת בכוח שמופעל בנקודת המגע. המשאית זורקת פריט עם דחיפה וסיבוב. הברמן זורק טיפה בקשת שמחושבת כך שתנחת בכוס | [PlayerPush.cs](Assets/Scripts/Tunnel/Player/PlayerPush.cs), [TruckDumper.cs](Assets/Scripts/Landfill/Trucks/TruckDumper.cs), [Bartender.cs](Assets/Scripts/WineBar/Pouring/Bartender.cs) |
 | Raycast | מצלמת האבטחה: קרניים שנעצרות בקיר קובעות גם מה היא רואה וגם איך נראה קונוס הראייה | [VisionSensor.cs](Assets/Scripts/Tunnel/Security/VisionSensor.cs) |
-| Collision2D | ערמת הפסולת בודקת במה היא פגעה. אם זה פריט המטרה, היום נכשל | [WastePile.cs](Assets/Scripts/Landfill/Machines/WastePile.cs) |
-| אפקטורים (רשות) | המסוע הוא SurfaceEffector2D. המפוח הוא AreaEffector2D בלי סקריפט בכלל: הכוח שווה לכל הפריטים, אז רק הקלים מתרוממים | [ConveyorBelt.cs](Assets/Scripts/Landfill/Machines/ConveyorBelt.cs), [Blower.prefab](Assets/Prefabs/Landfill/Blower.prefab) |
+| Collision ו-Collision2D | במנהרה: ארגז שנדחף בודק במה פגע ובאיזו מהירות, ומכה חזקה בקיר עושה רעש. במזבלה: ערמת הפסולת בודקת במה היא פגעה, ואם זה פריט המטרה היום נכשל | [ImpactNoise.cs](Assets/Scripts/Tunnel/Level/ImpactNoise.cs), [WastePile.cs](Assets/Scripts/Landfill/Machines/WastePile.cs) |
+| אפקטורים ומחברים (רשות) | דלת התא במנהרה תלויה על HingeJoint ונפתחת כשנשענים עליה. המסוע הוא SurfaceEffector2D. המפוח הוא AreaEffector2D בלי סקריפט בכלל: הכוח שווה לכל הפריטים, אז רק הקלים מתרוממים | [ConveyorBelt.cs](Assets/Scripts/Landfill/Machines/ConveyorBelt.cs), [Blower.prefab](Assets/Prefabs/Landfill/Blower.prefab) |
 
 יש גם טריגרים שבודקים תכונות: הנפה ([Sieve.cs](Assets/Scripts/Landfill/Machines/Sieve.cs)) מפילה דרך המסוע רק פריטים קטנים, והכוס ([Glass.cs](Assets/Scripts/WineBar/Pouring/Glass.cs)) בודקת איזה זן יש בטיפה שנכנסה.
 
@@ -101,6 +101,8 @@ flowchart LR
     PlayerCaught ==> MoodVolume
     PlayerCaught ==> ScreenShake
 
+    PlayerPush -- AddForceAtPosition --> Pushable[Crate / Sandbag / Cell Door: Rigidbody]
+    ImpactNoise ==> HintRequested
     WaterBottle -- PickUp --> BottleCarrier
     MattressGoal -- HasBottle, Drop --> BottleCarrier
     BottleCarrier ==> BottlePicked([BottlePicked]) ==> StatusHud
@@ -129,7 +131,7 @@ flowchart LR
 | BottlePicked | BottleCarrier | StatusHud |
 | BottleDelivered | MattressGoal | TunnelRound |
 | LevelWon, LevelLost | TunnelRound | EndScreen |
-| HintRequested | HintZone | HintToast |
+| HintRequested | HintZone, ImpactNoise | HintToast |
 | MemoryFound | MemoryZone | MemoryCaption |
 | Hope.Changed | Hope | StatusHud |
 
@@ -265,7 +267,7 @@ flowchart LR
 
 * **ביטקוין קבור** מוצג מהצד ולא מלמעלה, כדי שכוח הכבידה יעשה חלק מהמיון: פריטים קטנים נופלים דרך הנפה, ופריטים קלים עפים במפוח. יש שלוש משבצות קבועות למכונות במקום רשת חופשית. השלב הוא יום 1 מקוצר, עם מגבלת זמן כדי שיהיה תנאי הפסד.
 * **בר הבלנדים**: במקום כפתורי פלוס ומינוס, לוחצים על הבקבוק והיין נזרק לכוס. אי אפשר להוריד זן אחד, רק לרוקן את הכוס. בשלב יש שלושת הלקוחות הראשונים של יום 1.
-* **אור במנהרה**: בשלב הלימוד אפשר עכשיו להפסיד (התקווה יורדת עד 0), כדי שתנאי ההפסד יעבוד.
+* **אור במנהרה**: בשלב הלימוד אפשר עכשיו להפסיד (התקווה יורדת עד 0), כדי שתנאי ההפסד יעבוד. נוספו דברים שאפשר לדחוף: דלת התא נפתחת על ציר, יש ארגז בתא וארגז במסדרון שאפשר לדחוף לפניך כמחסה מהמצלמה (הקרניים שלה נעצרות בו), ושני שקי חול חוסמים את הכניסה למחסן, כהכנה לחפירה בשקי החול שבמסמך השלבים.
 
 ## חברי הצוות
 

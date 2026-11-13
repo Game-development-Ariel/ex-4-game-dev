@@ -85,6 +85,8 @@ public static class TunnelLevelSetup
         fields.FindProperty("moveSpeed").floatValue = TutorialPlayerSpeed;
         fields.ApplyModifiedPropertiesWithoutUndo();
 
+        SetupTools.GetOrAdd<PlayerPush>(player);
+
         Hope hope = SetupTools.GetOrAdd<Hope>(player);
         SetupTools.SetField(hope, "settings", TunnelAssets.LevelSettings);
 
