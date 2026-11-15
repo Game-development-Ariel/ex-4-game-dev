@@ -1,0 +1,31 @@
+name: Unity C# Linter
+
+on:
+  push:  # Trigger on every push
+  pull_request:  # Also run on pull requests
+
+jobs:
+  lint:
+    # The repo holds three separate Unity projects, so the same check runs once for each of them.
+    name: Run C# Linter (${{ matrix.project }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false  # One project failing should not hide the results of the other two
+      matrix:
+        project: [Light-in-the-Tunnel, Buried-Bitcoin, Vino-Blend-Bar]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '7.x'  # Adjust to the required .NET version for Unity
+
+      - name: Install dotnet-format
+        run: dotnet tool install -g dotnet-format
+
+      - name: Run dotnet-format
+        # Run dotnet-format in check mode to identify issues only in .cs files in the project's Assets/Scripts and subfolders
+        run: dotnet-format ${{ matrix.project }}/Assets/Scripts --check --folder --include **/*.cs --verbosity diagnostic
